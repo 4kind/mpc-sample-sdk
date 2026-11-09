@@ -191,13 +191,19 @@ fn redraw(repaint: Option<Repaint>, component: usize) {
     }
 }
 
-/// Show a toast for the standard one second.
+/// Show a toast for the standard one second, and repaint when it expires.
 pub fn show_toast(text: &str) {
     // The C entry point reads a NUL-terminated string, so hand it one.
     let mut line = text.as_bytes().to_vec();
     line.push(0);
-    // SAFETY: the buffer is NUL-terminated and lives for the call.
-    unsafe { toast_line(line.as_ptr(), None, 0) };
+    // The paint hook may not run again after this call, so ask for the expiry
+    // repaint here; otherwise the toast pixels stay until the next user action.
+    let component = if painted() != 0 { painted() } else { screen() };
+    // SAFETY: the buffer is NUL-terminated and lives for the call; `repaint`
+    // is the app's own repaint and `component` is on the current page.
+    unsafe {
+        toast_line(line.as_ptr(), crate::sites::repaint_function(), component);
+    }
 }
 
 /// The toast's text, or an empty string.
