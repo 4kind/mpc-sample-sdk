@@ -1,5 +1,10 @@
 # Using the MPC Sample SDK
 
+`mpc-sample-sdk` is a **Rust SDK**: a mod is a Rust `cdylib`, the events and app
+objects are typed Rust values, and the SDK isolates the firmware `unsafe` so the
+mod itself is safe Rust. The build tool is Cargo-based (`build-mod.sh`); no C or
+C++ is compiled.
+
 This folder is a hands-on cookbook. Each page is short, explains one part of the
 SDK, and ends with a complete snippet you can paste into a mod.
 
