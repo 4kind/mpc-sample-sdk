@@ -80,8 +80,9 @@ steps: [docs/22-build-and-install.md](docs/22-build-and-install.md).
 
 The hands-on guide is in [`docs/`](docs/README.md). It has one short page per
 topic — buttons, pads, encoder, knobs, MIDI, screens, drawing, samples, audio,
-tasks, Extract, WAV files, state and firmware — and every page ends with a code
-example.
+tasks, Extract, WAV files, state, firmware, build/install and the
+[emulator loop](docs/23-autonomous-development.md) — and every page ends with a
+code example.
 
 ## A minimal mod
 

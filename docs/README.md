@@ -32,6 +32,7 @@ Start here if you have never built a mod:
 20. [Troubleshooting](20-troubleshooting.md)
 21. [Firmware effects](21-effects.md)
 22. [Build and install a mod](22-build-and-install.md)
+23. [Autonomous development and emulator testing](23-autonomous-development.md)
 
 Every page has a runnable-shaped example. The examples assume:
 
