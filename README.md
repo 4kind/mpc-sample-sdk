@@ -28,7 +28,7 @@ The crate is published from this repository:
 
 ```toml
 [dependencies]
-mpc-sample-sdk = { git = "https://github.com/ioma8/mpc-sample-sdk", tag = "v0.1.0" }
+mpc-sample-sdk = { git = "https://github.com/ioma8/mpc-sample-sdk", tag = "v0.1.1" }
 ```
 
 A mod builds as a `cdylib`:
@@ -37,6 +37,16 @@ A mod builds as a `cdylib`:
 [lib]
 crate-type = ["cdylib"]
 ```
+
+The SDK ships one build script for every mod:
+
+```sh
+./build-mod.sh --manifest-path /path/to/my-mod/Cargo.toml --package my-mod --name my-mod
+```
+
+It cross-builds, strips, checks glibc and writes `build/my-mod.so`; add `--pack`
+and a firmware hash to produce the SD `autorun` zip. Full options and install
+steps: [docs/22-build-and-install.md](docs/22-build-and-install.md).
 
 ## Documentation
 

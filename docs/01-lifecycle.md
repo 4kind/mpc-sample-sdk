@@ -74,10 +74,17 @@ mpc_sample_sdk::export_mod!(Demo);
 crate-type = ["cdylib"]
 ```
 
+Build with the SDK script (it finds the SDK's cross linker, strips the library
+and checks it):
+
 ```bash
-cargo build --release --target aarch64-unknown-linux-gnu
-python3 lab.py preload target/aarch64-unknown-linux-gnu/release/libdemo.so
+/path/to/mpc-sample-sdk/build-mod.sh \
+  --manifest-path Cargo.toml --package demo --name demo
+python3 /path/to/virtual-mpc-sample/lab.py preload build/demo.so
 ```
+
+Add `--pack --firmware-sha256 <hash>` to produce an SD zip; see
+[Build and install](22-build-and-install.md).
 
 The installed mod lives for the process. Keep state in `self` or in
 `state::Global`, not in a stack temporary that a callback cannot reach.

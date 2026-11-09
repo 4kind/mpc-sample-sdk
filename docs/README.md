@@ -26,6 +26,7 @@ Start here if you have never built a mod:
 19. [A complete example mod](19-cookbook.md)
 20. [Troubleshooting](20-troubleshooting.md)
 21. [Firmware effects](21-effects.md)
+22. [Build and install a mod](22-build-and-install.md)
 
 Every page has a runnable-shaped example. The examples assume:
 
@@ -34,7 +35,7 @@ Every page has a runnable-shaped example. The examples assume:
 crate-type = ["cdylib"]
 
 [dependencies]
-mpc-sample-sdk = { git = "https://github.com/ioma8/mpc-sample-sdk", tag = "v0.1.0" }
+mpc-sample-sdk = { git = "https://github.com/ioma8/mpc-sample-sdk", tag = "v0.1.1" }
 ```
 
 A mod is installed by `export_mod!`, built as a `cdylib`, and loaded with
