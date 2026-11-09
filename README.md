@@ -97,8 +97,10 @@ src/platform/       page, sample, pads, slices, trim, WAV, paths, status,
 | **RenderOutput** | One interleaved f32 buffer plus its frame and channel geometry. |
 | **backend** | Feature-side code that knows a DSP algorithm (`minimod/src/backend/`). The SDK never depends on it. |
 
-The SDK does not know any feature.  See the `sample-converter` project for a
-complete mod built on it.
+The SDK does not know any feature.  See the public
+[minimod](https://github.com/ioma8/mpc-minimod) project for a complete MPC Sample
+mod built on it: the SAMPLE OPTIONS menu, AutoTrim, HPSS, Spectral Chop, the
+firmware effects, the bass synth and the live looper.
 
 ## License
 
