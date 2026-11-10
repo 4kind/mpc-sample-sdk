@@ -54,22 +54,32 @@ pub struct Selection {
     pub rate: u32,
 }
 
-/// The sample the Sample page has selected, or `None`.
+/// The state behind a Sample page, even when its selected pad is empty.
+///
+/// Synth actions do not read a source sample, so they only need the page
+/// binding/state to hand Extract the right program.  Unlike [`current`], this
+/// deliberately does not require a selected sample.
 #[must_use]
-pub fn current(screen: usize) -> Option<Selection> {
+pub fn page_state(screen: usize) -> Option<usize> {
     if screen == 0 {
         return None;
     }
     if image::read_pointer(screen)? != image::base() + SCREEN_VTABLE {
         return None;
     }
+    let binding = image::read_pointer(screen.checked_add(SCREEN_BINDING)?)?;
+    image::read_pointer(binding.checked_add(BINDING_STATE)?)
+}
+
+/// The sample the Sample page has selected, or `None`.
+#[must_use]
+pub fn current(screen: usize) -> Option<Selection> {
+    let state = page_state(screen)?;
     // SAFETY: `image::base() + PAGE_HAS_SAMPLE` is the page's own predicate and `screen`
     // is a Sample page.
     if unsafe { image::int_of_pointer(image::base() + PAGE_HAS_SAMPLE, screen) } == 0 {
         return None;
     }
-    let binding = image::read_pointer(screen.checked_add(SCREEN_BINDING)?)?;
-    let state = image::read_pointer(binding.checked_add(BINDING_STATE)?)?;
     let layers = image::read_pointer(state.checked_add(STATE_LAYERS)?)?;
     let sample = image::read_pointer(layers.checked_add(LAYERS_SAMPLE)?)?;
     let metadata = image::read_pointer(sample.checked_add(SAMPLE_METADATA)?)?;
