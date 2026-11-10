@@ -51,6 +51,11 @@ pub struct Request<'a> {
     pub start: u32,
     /// One past the last source frame.
     pub end: u32,
+    /// Write to this pad instead of the app's next free pad.
+    ///
+    /// The native command is patched at `+0x58` before execute, so an empty or
+    /// populated destination is overwritten without a second assignment command.
+    pub destination: Option<i32>,
 }
 
 /// The pad the app assigned.
@@ -93,6 +98,7 @@ struct Arm {
     start: u32,
     end: u32,
     name: usize,
+    destination: i32,
 }
 
 /// The armed extraction.
@@ -104,6 +110,7 @@ static mut ARM: Arm = Arm {
     start: 0,
     end: 0,
     name: 0,
+    destination: -1,
 };
 /// Whether `ARM` is valid; release/acquire around the fields.
 static ARM_READY: AtomicI32 = AtomicI32::new(0);
@@ -289,6 +296,14 @@ unsafe fn run_command(
     }
     // The constructor stores the settings object by pointer; the execute method
     // is what copies its range into the slice command.
+    let old_destination = if arm.destination >= 0 {
+        let address = command + 0x58;
+        let old = read_u64(address);
+        let written = write_u64(address, u64::try_from(arm.destination).unwrap_or(0));
+        (written && old.is_some()).then_some(old.unwrap_or(0))
+    } else {
+        None
+    };
     let settings = read_u64(command + 0x60).and_then(|value| usize::try_from(value).ok());
     let patched = match settings {
         Some(settings) if settings != 0 => {
@@ -321,6 +336,9 @@ unsafe fn run_command(
         if let Some(old) = old_end {
             let _ = write_u64(settings + RANGE_END, old);
         }
+    }
+    if let Some(old) = old_destination {
+        let _ = write_u64(command + 0x58, old);
     }
     if !writer::active() {
         ARM_WRITE_OK.store(i32::from(arm.buffer == 0), Ordering::Release);
@@ -365,6 +383,11 @@ pub fn run(request: &Request<'_>) -> Result<Extracted, ExtractError> {
     if request.screen == 0 || request.start >= request.end || request.channels == 0 {
         return Err(ExtractError::Invalid);
     }
+    if let Some(pad) = request.destination
+        && !(0..128).contains(&pad)
+    {
+        return Err(ExtractError::Invalid);
+    }
     let Some(program) = image::read_u64(
         request
             .state
@@ -381,6 +404,9 @@ pub fn run(request: &Request<'_>) -> Result<Extracted, ExtractError> {
     if before < 0 {
         return Err(ExtractError::NoProgram);
     }
+    let before_target = request
+        .destination
+        .and_then(|pad| pads::sample_for_pad(program, pad));
     let Some(name) = name_object(request.name) else {
         return Err(ExtractError::Invalid);
     };
@@ -399,6 +425,7 @@ pub fn run(request: &Request<'_>) -> Result<Extracted, ExtractError> {
             start: request.start,
             end: request.end,
             name,
+            destination: request.destination.unwrap_or(-1),
         });
         core::ptr::addr_of_mut!(ARM_SOURCE).write(request.state);
         core::ptr::addr_of_mut!(ARMED_COUNT).write(0);
@@ -408,21 +435,33 @@ pub fn run(request: &Request<'_>) -> Result<Extracted, ExtractError> {
         handler(request.screen);
     }
     let mut after = before;
+    let mut target_changed = false;
     for _ in 0..3000 {
-        if after != before {
+        if let Some(pad) = request.destination {
+            target_changed = pads::sample_for_pad(program, pad) != before_target;
+            if target_changed {
+                break;
+            }
+        } else if after != before {
             break;
         }
         std::thread::sleep(core::time::Duration::from_millis(1));
         after = pads::free_count(program);
     }
+    let assigned = match request.destination {
+        Some(_) => target_changed,
+        None => after != before,
+    };
     armed().store(0, Ordering::Release);
     let wrote = if request.buffer.is_none() {
         true
     } else {
         ARM_WRITE_OK.load(Ordering::Acquire) != 0
     };
-    if after != before && wrote {
-        Ok(Extracted { pad: before })
+    if assigned && wrote {
+        Ok(Extracted {
+            pad: request.destination.unwrap_or(before),
+        })
     } else {
         Err(ExtractError::NotApplied)
     }
@@ -449,6 +488,7 @@ mod tests {
             channels: 1,
             start: 10,
             end: 10,
+            destination: None,
         };
         assert_eq!(super::run(&request).unwrap_err(), ExtractError::Invalid);
     }
