@@ -623,12 +623,16 @@ pub fn replay_button(event: &[u8; 16], key: u8) -> bool {
 
 /// Send a note-on through the app's own input path.
 ///
+/// Returns false when the note hook is not installed.
+///
 /// This bypasses the mod's pad policy and is intended for a controlled internal
 /// selection, followed by [`send_note_off`]; the caller supplies the app's live
 /// input object and source id.
+#[must_use]
 pub fn send_note_on(input: usize, source: i32, pad: i32, properties: usize, velocity: f32) -> bool {
-    // SAFETY: the original is the app's own handler.
+    // SAFETY: the original is the app's own note-on handler.
     if let Some(forward) =
+        // SAFETY: the pointer is the app's displaced note-on entry.
         unsafe { original::<unsafe extern "C" fn(usize, i32, i32, usize, f32)>(3) }
     {
         // SAFETY: the app's own call.
