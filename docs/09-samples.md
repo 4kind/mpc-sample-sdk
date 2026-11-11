@@ -105,3 +105,13 @@ if let Some(selected) = selection::current(screen) {
 
 An unknown program (`None` or zero) is treated as “no proven room” and returns
 `false`; check before doing an expensive render that creates pads.
+
+## Native silent seed
+
+`platform::sample::silent_seed()` returns an app-owned silent stereo sample
+when the firmware's Temporary Samples service has been captured. It returns
+`None` before that service is available or if native construction fails. The
+SDK keeps one seed alive for the process lifetime because Extract can retain
+references to it. The seed is not inserted into the sample pool; it is meant
+as a temporary Extract source, not as a sample to assign directly. Stock
+Extract writes and registers the final WAV.

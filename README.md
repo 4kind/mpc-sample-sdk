@@ -32,9 +32,12 @@ built in safe Rust.
 
 It owns everything that is not a feature:
 
-* **Firmware** — find the loaded app, verify the 36 fingerprint words, and map
+* **Firmware** — find the loaded app, verify the 37 fingerprint words, and map
   the image (`image`, `loader`).
-* **Hooks** — the in-memory `b`/relay/trampoline engine and all 16 sites.  The
+* **Native sample seed** — create a silent, app-owned stereo sample in memory
+  for Extract when no pad provides a source. The SDK retains one seed for the
+  process lifetime; Extract writes and registers the rendered output as a WAV.
+* **Hooks** — the in-memory `b`/relay/trampoline engine and all 17 sites.  The
   displaced originals stay inside `sites`; a mod never stores or types one.
 * **API** — the `Mod` trait, the event types, and `export_mod!`, which emits
   the `.init_array` entry point that installs the hooks and calls the mod.
@@ -56,7 +59,7 @@ The crate is published from this repository:
 
 ```toml
 [dependencies]
-mpc-sample-sdk = { git = "https://github.com/ioma8/mpc-sample-sdk", tag = "v0.1.8" }
+mpc-sample-sdk = { git = "https://github.com/ioma8/mpc-sample-sdk", tag = "v0.1.9" }
 ```
 
 A mod builds as a `cdylib`:
@@ -114,7 +117,7 @@ the mod's `on_start` runs only after the hooks are in.
 src/lib.rs          the public surface and the crate docs
 src/event.rs        Mod, the event types and the flows
 src/loader.rs       install, export_mod!, the firmware words
-src/sites.rs        the 16 site adapters
+src/sites.rs        the 17 site adapters
 src/hook.rs         the patch engine
 src/image.rs        the image, memory window and firmware call helpers
 src/audio.rs        the ALSA taps, OutputInfo, latency and S32 mixing

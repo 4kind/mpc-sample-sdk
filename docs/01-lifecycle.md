@@ -29,8 +29,8 @@ mpc_sample_sdk::export_mod!(Hello);
 
 ## What the SDK does for you
 
-- Finds `/usr/bin/MPC Sample` and checks the 36-word firmware fingerprint.
-- Patches the 16 hook sites; the displaced originals stay private.
+- Finds `/usr/bin/MPC Sample` and checks the 37-word firmware fingerprint.
+- Patches the 17 hook sites; the displaced originals stay private.
 - Decodes every event into the types in `event.rs`.
 - Forwards the event unless you return `Consume`.
 - Calls `on_start` only after installation succeeded.

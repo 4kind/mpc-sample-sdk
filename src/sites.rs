@@ -15,7 +15,7 @@ use crate::hook;
 use crate::image;
 use crate::loader::with_mod;
 use crate::midi::{self, NoteEvent};
-use crate::platform::{control, extract, page, writer};
+use crate::platform::{control, extract, page, sample, writer};
 
 /// One site: its image offset and the handler to put there.
 struct Site {
@@ -35,7 +35,7 @@ pub fn notes_ready() -> bool {
 }
 
 /// The displaced function of every site, zero when it was not installed.
-static mut ORIGINALS: [usize; 16] = [0; 16];
+static mut ORIGINALS: [usize; 17] = [0; 17];
 
 /// The displaced function for one site.
 ///
@@ -43,7 +43,7 @@ static mut ORIGINALS: [usize; 16] = [0; 16];
 ///
 /// `T` must be the exact signature of the hooked function.
 unsafe fn original<T: Copy>(index: usize) -> Option<T> {
-    // SAFETY: the table has 16 entries and `index` is a site number.
+    // SAFETY: the table has 17 entries and `index` is a site number.
     let address = unsafe {
         core::ptr::addr_of!(ORIGINALS)
             .cast::<usize>()
@@ -92,7 +92,7 @@ pub fn install(base: usize) -> bool {
 }
 
 /// The site table, in install order.
-fn table() -> [Site; 16] {
+fn table() -> [Site; 17] {
     [
         Site {
             offset: 0x0154_5a50,
@@ -158,7 +158,28 @@ fn table() -> [Site; 16] {
             offset: 0x0196_8020,
             handler: control_entry as *const (),
         },
+        Site {
+            offset: 0x01df_3330,
+            handler: sample_service_ctor as *const (),
+        },
     ]
+}
+
+unsafe extern "C" fn sample_service_ctor(
+    service: usize,
+    first: usize,
+    second: usize,
+    third: usize,
+    fourth: usize,
+) {
+    // SAFETY: site 16 is this constructor and the app supplies its arguments.
+    let forward =
+        unsafe { original::<unsafe extern "C" fn(usize, usize, usize, usize, usize)>(16) };
+    if let Some(forward) = forward {
+        // SAFETY: this forwards the original constructor arguments unchanged.
+        unsafe { forward(service, first, second, third, fourth) };
+        sample::remember_service(service);
+    }
 }
 
 /// The app's 16 Levels view constructor: pass it through.
@@ -658,7 +679,7 @@ mod tests {
 
     #[test]
     fn the_table_has_one_entry_per_site() {
-        assert_eq!(table().len(), 16);
+        assert_eq!(table().len(), 17);
         assert!(!notes_ready());
     }
 }

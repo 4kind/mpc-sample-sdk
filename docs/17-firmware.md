@@ -28,7 +28,7 @@ mpc_sample_sdk::export_mod!(ModType);
 which:
 
 1. finds the app's image,
-2. checks the 36 firmware words,
+2. checks the 37 firmware words,
 3. installs the hook sites,
 4. calls `on_start`.
 
@@ -50,7 +50,7 @@ if base == 0 {
 ```
 
 `loader::find_main()` returns the load address, or zero. `firmware_ok(base)`
-checks all 36 site words.
+checks all 37 site words.
 
 ## Manual installation
 

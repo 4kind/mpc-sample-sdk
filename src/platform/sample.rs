@@ -190,9 +190,114 @@ pub fn geometry(sample: usize) -> Option<(u32, u16, u32)> {
     Some((frames, channels, rate))
 }
 
+// The app's Temporary Samples service and one native seed for Extract.
+const BUILD_SAMPLE: usize = 0x01df_4ac0;
+const RELEASE_SHARED: usize = 0x0123_bca0;
+const SEED_FRAMES: u32 = 4096;
+static SERVICE: core::sync::atomic::AtomicUsize = core::sync::atomic::AtomicUsize::new(0);
+// The app can retain references after Extract; keep one seed alive until process exit.
+static SEED: std::sync::OnceLock<Seed> = std::sync::OnceLock::new();
+static SEED_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+pub(crate) fn remember_service(service: usize) {
+    SERVICE.store(service, core::sync::atomic::Ordering::Release);
+}
+
+/// One owning reference to a real, unregistered native sample.
+pub struct Seed {
+    sample: usize,
+    owner: usize,
+    holder: usize,
+}
+impl Seed {
+    /// Sample pointer for the temporary layer.
+    #[must_use]
+    pub const fn sample(&self) -> usize {
+        self.sample
+    }
+    /// Sample holder pointer for the temporary layer.
+    #[must_use]
+    pub const fn holder(&self) -> usize {
+        self.holder
+    }
+    /// Number of seed frames.
+    #[must_use]
+    pub const fn frames(&self) -> u32 {
+        SEED_FRAMES
+    }
+}
+impl Drop for Seed {
+    fn drop(&mut self) {
+        if self.owner != 0 {
+            // SAFETY: the builder returned one owning shared reference; this releases it exactly once.
+            unsafe { image::void_of_pointer(image::base() + RELEASE_SHARED, self.owner) };
+        }
+    }
+}
+
+/// Build a silent stereo sample to supply the stock Extract command.
+#[must_use]
+pub fn silent_seed() -> Option<&'static Seed> {
+    if let Some(seed) = SEED.get() {
+        return Some(seed);
+    }
+    let _guard = SEED_LOCK
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    if let Some(seed) = SEED.get() {
+        return Some(seed);
+    }
+    let seed = build_seed()?;
+    let _ = SEED.set(seed);
+    SEED.get()
+}
+
+fn build_seed() -> Option<Seed> {
+    let context = SERVICE.load(core::sync::atomic::Ordering::Acquire);
+    if context == 0 {
+        return None;
+    }
+    #[cfg(target_arch = "aarch64")]
+    {
+        let audio = vec![0.0_f32; SEED_FRAMES as usize * 2];
+        let start = audio.as_ptr() as usize;
+        let end = start + audio.len() * size_of::<f32>();
+        let vector = [start, end, end];
+        let mut pair = [0_usize; 2];
+        let address = image::base() + BUILD_SAMPLE;
+        // SAFETY: this is the 1.3.0.12 C++ builder. Its nontrivial return uses x8;
+        // the audio/vector live throughout the call and the builder copies them.
+        unsafe {
+            core::arch::asm!("blr {func}", func = in(reg) address, in("x0") context,
+            in("x1") vector.as_ptr(), in("x2") 2_usize, in("x3") 44_100_usize,
+            in("x8") pair.as_mut_ptr(), clobber_abi("C"));
+        }
+        let mut seed = Seed {
+            sample: pair[0],
+            owner: pair[1],
+            holder: 0,
+        };
+        if seed.sample == 0 || seed.owner == 0 {
+            return None;
+        }
+        seed.holder = image::read_pointer(seed.sample + 0x30)?;
+        (seed.holder != 0).then_some(seed)
+    }
+    #[cfg(not(target_arch = "aarch64"))]
+    {
+        let _ = BUILD_SAMPLE;
+        None
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::RATE_RANGE;
+
+    #[test]
+    fn a_seed_is_unavailable_without_the_app_service() {
+        assert!(super::silent_seed().is_none());
+    }
 
     #[test]
     fn the_rate_range_matches_the_app() {
